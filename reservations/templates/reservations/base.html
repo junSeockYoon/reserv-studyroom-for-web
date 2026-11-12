@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  {# 휴대폰에서 글자가 작게 축소되지 않게, 화면 너비에 맞춘다. #}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}스터디룸 예약{% endblock %}</title>
+  <style>
+    /* 색 이름. 화면 전체에서 같은 색을 쓰기 위해 변수로 모아 둔다. */
+    :root {
+      color-scheme: light;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --paper: #f3efe6;
+      --card: #fffdf8;
+      --line: #ddd4c4;
+      --green: #1f7a4d;
+      --green-dark: #143024;
+      --blue: #1d4e89;
+      --closed: #e4ddd0;
+      --closed-ink: #3f3a34;
+      --danger: #9d2c2c;
+      --error-bg: #fdecea;
+      --error-line: #b42318;
+      --warn-bg: #fff6e8;
+      --warn-line: #b54708;
+      --ok-bg: #e5f6ec;
+      --ok-line: #1f7a4d;
+      --info-bg: #e8f0f6;
+      --info-line: #3d5a73;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    a { color: var(--green-dark); }
+    a:hover { text-decoration: none; }
+
+    .top {
+      background: var(--green-dark);
+      color: #fff;
+    }
+
+    .top a,
+    .top a:visited {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .wrap {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+    }
+
+    h1 { margin: 0.2rem 0; font-size: 1.6rem; }
+    h2 { margin: 0 0 0.6rem; font-size: 1.3rem; }
+    h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+
+    .lede { margin: 0.3rem 0 0; }
+
+    main.wrap { padding-bottom: 48px; }
+
+    .rules {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .date-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .date-field { flex: 1 1 16rem; }
+
+    input[type="date"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      max-width: 100%;
+      min-height: 48px;
+      padding: 10px 12px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button,
+    a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 10px 16px;
+      border: 2px solid var(--green);
+      border-radius: 10px;
+      background: var(--green);
+      color: #fff;
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    a.button:visited { color: #fff; }
+
+    button.secondary,
+    a.button.secondary {
+      background: #fff;
+      color: var(--green-dark);
+      border-color: var(--green-dark);
+    }
+
+    button.danger {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+
+    button:focus,
+    a:focus,
+    input:focus,
+    textarea:focus {
+      outline: 3px solid var(--green);
+      outline-offset: 2px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin: 0 0 16px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .legend li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      flex: 0 0 auto;
+    }
+
+    .swatch-open { background: #fff; border: 2px solid var(--green); }
+    .swatch-taken { background: var(--blue); }
+    .swatch-closed { background: var(--closed); border: 2px solid #c9c0b0; }
+
+    .room {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    /* 칸 너비를 9.5rem 이상으로 잡아, 휴대폰에서도 시간이 두 줄로 쪼개지지 않게 한다. */
+    .slot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+      gap: 10px;
+    }
+
+    .slot {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      min-height: 76px;
+      padding: 10px;
+      border-radius: 12px;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+
+    .slot-time { font-weight: 700; }
+    .slot-state { font-size: 0.95rem; }
+
+    .slot-open,
+    .slot-open:visited {
+      background: #fff;
+      color: var(--green-dark);
+      border: 2px solid var(--green);
+    }
+
+    .slot-open:hover { background: #e7f6ee; }
+
+    .slot-taken,
+    .slot-taken:visited {
+      background: var(--blue);
+      color: #fff;
+      border: 2px solid var(--blue);
+    }
+
+    .slot-taken:hover { background: #173e61; }
+
+    .slot-closed {
+      background: var(--closed);
+      color: var(--closed-ink);
+      border: 2px solid #d3c9b8;
+    }
+
+    .panel {
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 0 0 16px;
+    }
+
+    .panel-error { background: var(--error-bg); border: 2px solid var(--error-line); }
+    .panel-taken { background: var(--warn-bg); border: 2px solid var(--warn-line); }
+    .panel-empty { background: #fff; border: 2px dashed #8a8175; }
+    .panel-confirm { background: #fff; border: 2px solid var(--danger); }
+    .panel-info { background: var(--info-bg); border: 2px solid var(--info-line); }
+    .panel-success { background: var(--ok-bg); border: 2px solid var(--ok-line); }
+
+    .panel h2,
+    .panel h3 { margin-top: 0; }
+
+    .booking-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .booking-list li {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .purpose { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.4rem 0 0; }
+
+    .facts {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      gap: 8px 12px;
+      margin: 0 0 16px;
+    }
+
+    .facts dt { color: var(--muted); font-weight: 700; }
+    .facts dd { margin: 0; overflow-wrap: anywhere; }
+
+    .hint { color: var(--muted); margin-top: 0; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .actions > * { flex: 1 1 12rem; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card label { margin-top: 12px; }
+    .card label:first-child { margin-top: 0; }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 1.35rem; }
+      /* 좁은 화면에서도 시간 칸을 두 줄로 쌓지 않고, 한 줄에 두 칸씩 둔다. */
+      .slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .facts { grid-template-columns: 1fr; gap: 2px; }
+      .facts dt { margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <p class="eyebrow">내 컴퓨터에서 사용하는 시간표</p>
+      <h1><a href="{% url 'schedule' %}">스터디룸 예약</a></h1>
+      <p class="lede">로그인 없이 씁니다. 한 칸은 1시간이고, 같은 칸은 한 명만 예약할 수 있습니다.</p>
+    </div>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

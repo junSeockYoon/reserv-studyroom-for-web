@@ -1,0 +1,82 @@
+{% extends "reservations/base.html" %}
+
+{% block title %}예약 작성 · 스터디룸 예약{% endblock %}
+
+{% block content %}
+  <h2>예약 작성</h2>
+
+  {% if summary %}
+    <dl class="facts">
+      <dt>스터디룸</dt>
+      <dd>{{ summary.room_name }}</dd>
+      <dt>날짜</dt>
+      <dd>{{ summary.korean_date }}</dd>
+      <dt>시간</dt>
+      <dd>{{ summary.slot_label }}</dd>
+    </dl>
+    <p class="hint">방, 날짜, 시작 시간은 누른 칸에서 넘어왔습니다. 이 화면에서는 이름과 사용 목적만 입력합니다.</p>
+  {% endif %}
+
+  {% if slot_message %}
+    <div class="panel panel-error" role="alert">
+      <h3>이 칸은 예약할 수 없습니다</h3>
+      <p>{{ slot_message }}</p>
+    </div>
+  {% endif %}
+
+  {% if taken %}
+    <div class="panel panel-taken" role="alert">
+      <h3>이미 예약된 칸입니다</h3>
+      <p>{{ taken_message }}</p>
+      <dl class="facts">
+        <dt>예약자 이름</dt>
+        <dd>{{ taken.booker_name }}</dd>
+        <dt>사용 목적</dt>
+        <dd class="purpose">{{ taken.purpose }}</dd>
+      </dl>
+      <a class="button secondary" href="{% url 'reservation_detail' taken.id %}">이 예약 내용 보기</a>
+    </div>
+  {% endif %}
+
+  {% if save_error %}
+    <div class="panel panel-error" role="alert">
+      <h3>저장하지 못했습니다</h3>
+      <p>{{ save_error }}</p>
+    </div>
+  {% endif %}
+
+  {% if field_errors %}
+    <div class="panel panel-error" role="alert">
+      <h3>입력한 내용을 다시 확인해 주세요</h3>
+      <ul>
+        {% for error in field_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if show_form %}
+    {# 브라우저 검사를 통과해도, 서버가 views.py에서 한 번 더 검사한다. #}
+    <form class="card" method="post" action="{% url 'reserve' %}" autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="room_id" value="{{ summary.room_id }}">
+      <input type="hidden" name="date" value="{{ summary.date_iso }}">
+      <input type="hidden" name="start_time" value="{{ summary.start_hm }}">
+
+      <label for="booker_name">예약자 이름</label>
+      <input id="booker_name" name="booker_name" type="text" maxlength="{{ name_max }}" required value="{{ booker_name }}">
+      <p class="hint">{{ name_max }}자 이하. 공백만 입력하면 저장되지 않습니다.</p>
+
+      <label for="purpose">사용 목적</label>
+      <textarea id="purpose" name="purpose" maxlength="{{ purpose_max }}" required>{{ purpose }}</textarea>
+      <p class="hint">{{ purpose_max }}자 이하.</p>
+
+      <div class="actions">
+        <button type="submit">예약하기</button>
+      </div>
+    </form>
+  {% endif %}
+
+  <p><a href="{% url 'schedule' %}?date={{ back_date }}">시간표로 돌아가기</a></p>
+{% endblock %}

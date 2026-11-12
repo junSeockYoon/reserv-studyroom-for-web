@@ -1,0 +1,11 @@
+{% extends "reservations/base.html" %}
+
+{% block title %}찾을 수 없음 · 스터디룸 예약{% endblock %}
+
+{% block content %}
+  <div class="panel panel-empty">
+    <h2>페이지를 찾을 수 없습니다</h2>
+    <p>{{ detail|default:"주소가 잘못되었거나, 이미 없는 페이지입니다." }}</p>
+    <p><a class="button secondary" href="{% url 'schedule' %}">시간표로 돌아가기</a></p>
+  </div>
+{% endblock %}
