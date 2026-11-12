@@ -1,0 +1,49 @@
+{% extends "reservations/base.html" %}
+
+{% block title %}말로 찾기 · 스터디룸 예약{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <p class="kicker">말로 찾기</p>
+    <h2>어떤 자리가 필요하세요?</h2>
+    <p class="rules">고른 칸은 예약 화면에서 다시 확인한 뒤에 저장됩니다. 취소는 확인 버튼을 눌러야 실행됩니다.</p>
+  </div>
+
+  {% include "reservations/ask_form.html" %}
+
+  {% if error %}
+    <div class="panel panel-error" role="alert">
+      <p>{{ error }}</p>
+    </div>
+  {% endif %}
+
+  {% if options %}
+    <h3>이 칸을 예약 화면에서 확인할 수 있어요</h3>
+    <div class="option-list">
+      {% for item in options %}
+        <a class="option-card" href="{{ item.url }}">
+          <strong>{{ item.room_name }}</strong>
+          <span>{{ item.korean_date }} · {{ item.range_label }}</span>
+          {% if item.purpose %}
+            <span class="purpose">{{ item.purpose }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if cancel_options %}
+    <h3>취소할 예약을 고르세요</h3>
+    <p class="rules">확인 버튼을 누르기 전에는 예약이 취소되지 않습니다.</p>
+    <div class="option-list">
+      {% for item in cancel_options %}
+        <a class="option-card" href="{{ item.url }}">
+          <strong>{{ item.room_name }}</strong>
+          <span>{{ item.korean_date }} · {{ item.slot_label }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <p><a class="back-link" href="{% url 'schedule' %}">방 고르기로 돌아가기</a></p>
+{% endblock %}

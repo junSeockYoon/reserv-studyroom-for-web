@@ -355,3 +355,111 @@ class ReservationRulesTests(TestCase):
         hidden_old = self.client.get(f"/reservations/{old_id}/")
         self.assertEqual(hidden_old.status_code, 404)
         self.assertIsNotNone(queries.fetch_reservation(old_id))
+
+    def test_spoken_search_suggests_without_saving_until_submit(self):
+        # 2026-11-12는 목요일이라 금요일은 11월 13일이다.
+        fixed = datetime.datetime(
+            2026, 11, 12, 10, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9))
+        )
+        room_a = self.room_ids["룸 A"]
+        with patch("reservations.rules.local_now", return_value=fixed):
+            self.enter()
+            home = self.client.get("/")
+            self.assertContains(home, "쓸 수 있어요")
+            self.assertNotContains(home, "비어 있음")
+            found = self.client.post(
+                "/ask/",
+                {"wish": "금요일 저녁에 두 시간, 조용히 공부"},
+            )
+            self.assertContains(found, "조용히 공부")
+            self.assertContains(found, "18:00~20:00")
+            self.assertContains(found, "룸 A")
+            self.assertContains(found, "룸 B")
+            self.assertContains(found, "룸 C")
+            self.assertEqual(len(queries.fetch_reservations_for_date("2026-11-13")), 0)
+            reserve = self.client.get(
+                f"/reserve/?room_id={room_a}&date=2026-11-13"
+                "&start_time=18:00&span=2&purpose=조용히 공부"
+            )
+            self.assertContains(reserve, "조용히 공부")
+            self.assertContains(reserve, "18:00~19:00")
+            self.assertContains(reserve, "19:00~20:00")
+            saved = self.client.post(
+                "/reserve/",
+                {
+                    "room_id": str(room_a),
+                    "date": "2026-11-13",
+                    "start_time": "18:00",
+                    "span": "2",
+                    "purpose": "조용히 공부",
+                },
+            )
+            self.assertEqual(saved.status_code, 302)
+        self.assertEqual(len(queries.fetch_reservations_for_date("2026-11-13")), 2)
+
+    def test_two_hour_request_does_not_save_when_one_hour_is_taken(self):
+        fixed = datetime.datetime(
+            2026, 11, 12, 10, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9))
+        )
+        room_a = self.room_ids["룸 A"]
+        day = datetime.date(2026, 11, 13)
+        with patch("reservations.rules.local_now", return_value=fixed):
+            self.book(room_a, day, start="19:00", purpose="이미 있음")
+            blocked = self.client.post(
+                "/reserve/",
+                {
+                    "room_id": str(room_a),
+                    "date": day.isoformat(),
+                    "start_time": "18:00",
+                    "span": "2",
+                    "purpose": "이어서",
+                },
+            )
+            self.assertContains(blocked, "이미 예약되어 있습니다")
+        rows = queries.fetch_reservations_for_date(day.isoformat())
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["start_time"], "19:00:00")
+
+    def test_spoken_cancel_opens_confirm_and_keeps_the_row(self):
+        fixed = datetime.datetime(
+            2026, 11, 12, 10, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9))
+        )
+        with patch("reservations.rules.local_now", return_value=fixed):
+            day = datetime.date(2026, 11, 13)
+            self.book(self.room_ids["룸 A"], day, start="15:00", purpose="독서")
+            row = queries.fetch_reservations_for_date(day.isoformat())[0]
+            asked = self.client.post("/ask/", {"wish": "내일 거 취소해 줘"})
+            self.assertEqual(asked.status_code, 302)
+            self.assertIn(f"/reservations/{row['id']}/", asked["Location"])
+            detail = self.client.get(asked["Location"])
+            self.assertContains(detail, "이 예약을 취소할까요?")
+            self.assertIsNotNone(queries.fetch_reservation(row["id"]))
+
+    def test_home_suggestion_uses_my_hour_and_hides_other_people(self):
+        fixed = datetime.datetime(
+            2026, 11, 12, 10, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=9))
+        )
+        day = datetime.date(2026, 11, 14)
+        with patch("reservations.rules.local_now", return_value=fixed):
+            self.book(
+                self.room_ids["룸 A"],
+                day,
+                start="15:00",
+                name="홍길동",
+                purpose="내 공부",
+            )
+            self.book(
+                self.room_ids["룸 B"],
+                day,
+                start="16:00",
+                name="김철수",
+                phone="010-9999-8888",
+                purpose="비밀회의목적",
+            )
+            self.enter(name="홍길동", phone="010-1234-5678")
+            home = self.client.get("/")
+            self.assertContains(home, "15시")
+            self.assertContains(home, "룸 A")
+            self.assertNotContains(home, "비밀회의목적")
+            self.assertNotContains(home, "김철수")
+            self.assertNotContains(home, "비어 있음")

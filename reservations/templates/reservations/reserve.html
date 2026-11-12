@@ -17,7 +17,7 @@
       <dt>날짜</dt>
       <dd>{{ summary.korean_date }}</dd>
       <dt>시간</dt>
-      <dd>{{ summary.slot_label }}</dd>
+      <dd>{{ summary.slot_labels|join:" · " }}</dd>
       <dt>예약자 이름</dt>
       <dd>{{ visitor.name }}</dd>
       <dt>전화번호</dt>
@@ -71,6 +71,10 @@
       <input type="hidden" name="room_id" value="{{ summary.room_id }}">
       <input type="hidden" name="date" value="{{ summary.date_iso }}">
       <input type="hidden" name="start_time" value="{{ summary.start_hm }}">
+      {% if summary.span > 1 %}
+        <input type="hidden" name="span" value="{{ summary.span }}">
+        <p class="hint">위 시간을 함께 예약합니다. 한 칸이라도 이미 있으면 전부 저장하지 않습니다.</p>
+      {% endif %}
 
       <label for="purpose">사용 목적</label>
       <textarea id="purpose" name="purpose" maxlength="{{ purpose_max }}" required>{{ purpose }}</textarea>

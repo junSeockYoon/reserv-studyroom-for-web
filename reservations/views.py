@@ -8,13 +8,13 @@
 
 import datetime
 from functools import wraps
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from . import identity, queries, rules
+from . import assistant, identity, queries, rules
 from .models import Reservation
 
 # 화면 문장. 코드 값은 주소나 조건에서 쓰고, 문장은 여기서만 고친다.
@@ -42,6 +42,7 @@ MESSAGES = {
         "같은 방, 같은 날짜, 같은 시작 시간은 한 명만 예약할 수 있어서 "
         "저장하지 않았습니다."
     ),
+    "bad_span": "한 번에 예약할 수 있는 시간은 1시간부터 4시간까지입니다.",
     "save_failed": "저장하지 못했습니다. 시간표에서 칸을 다시 선택해 주세요.",
     "missing_confirm": "확인 버튼을 누르기 전에는 예약이 취소되지 않습니다.",
     "cancel_failed": "예약을 취소하지 못했습니다. 다시 시도해 주세요.",
@@ -275,11 +276,11 @@ def schedule(request):
     """첫 화면. 방을 고르고, 방마다 앞으로 7일의 남은 칸을 보여 준다."""
     today = rules.local_today()
     last = today + datetime.timedelta(days=6)
-    taken = _taken_map(
-        queries.fetch_reservations_between(today.isoformat(), last.isoformat())
-    )
+    rows = queries.fetch_reservations_between(today.isoformat(), last.isoformat())
+    rooms = queries.fetch_rooms()
+    taken = _taken_map(rows)
     room_cards = []
-    for room in queries.fetch_rooms():
+    for room in rooms:
         days = coming_days(7, room["id"], taken, None)
         open_days = 0
         for day in days:
@@ -292,9 +293,14 @@ def schedule(request):
                 "open_days": open_days,
             }
         )
+    occupied = _occupied_from(rows)
+    own_slots = _own_slots(request.visitor)
+    suggestion = _suggestion_link(assistant.suggest_slot(rooms, occupied, own_slots))
     context = {
         "room_cards": room_cards,
         "notice": NOTICES.get(request.GET.get("notice", ""), ""),
+        "suggestion": suggestion,
+        "wish": "",
     }
     return render(request, "reservations/schedule.html", context)
 
@@ -346,8 +352,140 @@ def mine(request):
     context = {
         "reservations": reservations,
         "notice": NOTICES.get(request.GET.get("notice", ""), ""),
+        "wish": "",
     }
     return render(request, "reservations/mine.html", context)
+
+
+def _occupied_from(rows):
+    """예약 줄에서 칸 자리만 모은다. 이름, 전화번호, 목적은 넣지 않는다."""
+    occupied = set()
+    for row in rows:
+        occupied.add((row["room_id"], row["date"], row["start_time"]))
+    return occupied
+
+
+def _own_slots(visitor):
+    """이 사람 예약의 방, 날짜, 시각만 남긴다."""
+    slots = []
+    for row in queries.fetch_my_reservations(visitor["name"], visitor["phone"]):
+        if not identity.same_person(row, visitor):
+            continue
+        slots.append(
+            {
+                "id": row["id"],
+                "room_id": row["room_id"],
+                "room_name": row["room_name"],
+                "date": row["date"],
+                "start_time": row["start_time"],
+            }
+        )
+    return slots
+
+
+def _reserve_url(room_id, date_iso, start_hm, span=1, purpose=""):
+    """예약 화면 주소. 이 주소로 들어가는 것만으로는 저장되지 않는다."""
+    params = {
+        "room_id": room_id,
+        "date": date_iso,
+        "start_time": start_hm,
+    }
+    if span > 1:
+        params["span"] = span
+    if purpose != "":
+        params["purpose"] = purpose
+    return reverse("reserve") + "?" + urlencode(params)
+
+
+def _suggestion_link(suggestion):
+    """첫 화면 문장에 예약 화면 주소를 붙인다."""
+    if suggestion is None:
+        return None
+    suggestion["url"] = _reserve_url(
+        suggestion["room_id"],
+        suggestion["date_iso"],
+        suggestion["start_hm"],
+    )
+    return suggestion
+
+
+def _occupied_for_wish(parsed):
+    """후보를 고를 때 볼 예약 칸.
+
+    앞으로 14일과, 문장이 가리키는 날짜가 그 밖이면 그 날짜도 읽는다.
+    """
+    today = rules.local_today()
+    last = today + datetime.timedelta(days=13)
+    occupied = _occupied_from(
+        queries.fetch_reservations_between(today.isoformat(), last.isoformat())
+    )
+    day = parsed["day"]
+    if day is not None and (day < today or day > last):
+        for row in queries.fetch_reservations_for_date(day.isoformat()):
+            occupied.add((row["room_id"], row["date"], row["start_time"]))
+    return occupied
+
+
+@require_visitor
+@require_http_methods(["GET", "POST"])
+def ask(request):
+    """말로 적은 문장에서 빈 칸이나 내 예약을 찾아 보여 준다.
+
+    찾는 문장은 예약 화면으로 보내고, 취소 문장은 확인 화면으로 보낸다.
+    이 함수는 저장하거나 지우지 않는다.
+    """
+    wish = ""
+    error = ""
+    options = []
+    cancel_options = []
+    if request.method == "POST":
+        wish = request.POST.get("wish", "")
+        parsed = assistant.parse_wish(wish)
+        if parsed["empty"]:
+            error = "어떤 자리가 필요한지 적어 주세요."
+        elif parsed["hour"] is not None and parsed["hour"] not in range(
+            rules.OPEN_HOUR, rules.CLOSE_HOUR
+        ):
+            error = MESSAGES["outside_hours"]
+        else:
+            own_slots = _own_slots(request.visitor)
+            if parsed["intent"] == "cancel":
+                matches = assistant.match_cancellations(parsed, own_slots)
+                if len(matches) == 1:
+                    return redirect("reservation_detail", matches[0]["id"])
+                if len(matches) == 0:
+                    error = "그 말에 맞는 내 예약이 없습니다."
+                else:
+                    for row in matches:
+                        shown = present_reservation(row)
+                        shown["url"] = reverse("reservation_detail", args=[row["id"]])
+                        cancel_options.append(shown)
+            else:
+                rooms = queries.fetch_rooms()
+                found = assistant.find_options(
+                    parsed,
+                    rooms,
+                    _occupied_for_wish(parsed),
+                    own_slots,
+                )
+                if len(found) == 0:
+                    error = "그 조건으로 이어서 잡을 수 있는 칸이 없습니다."
+                for item in found:
+                    item["url"] = _reserve_url(
+                        item["room_id"],
+                        item["date_iso"],
+                        item["start_hm"],
+                        item["span"],
+                        item["purpose"],
+                    )
+                    options.append(item)
+    context = {
+        "wish": wish,
+        "error": error,
+        "options": options,
+        "cancel_options": cancel_options,
+    }
+    return render(request, "reservations/ask.html", context)
 
 
 def _submitted(request, key):
@@ -355,6 +493,32 @@ def _submitted(request, key):
     if request.method == "POST":
         return request.POST.get(key, "")
     return request.GET.get(key, "")
+
+
+def _parse_span(text):
+    """연속으로 예약할 칸 수. 비어 있으면 1칸이고, 1부터 4가 아니면 None이다."""
+    raw = "" if text is None else str(text).strip()
+    if raw == "":
+        return 1
+    if not raw.isdigit():
+        return None
+    value = int(raw)
+    if value < 1 or value > 4:
+        return None
+    return value
+
+
+def _span_starts(start, span):
+    """시작 시각부터 span개의 정각. 운영 시간 밖으로 나가면 None이다."""
+    starts = []
+    hour = start.hour
+    while len(starts) < span:
+        candidate = datetime.time(hour, 0)
+        if not rules.is_allowed_start(candidate):
+            return None
+        starts.append(candidate)
+        hour = hour + 1
+    return starts
 
 
 def _parse_room_id(text):
@@ -397,6 +561,7 @@ def reserve(request):
     room_id = _parse_room_id(_submitted(request, "room_id"))
     day, date_code = rules.parse_date(_submitted(request, "date"))
     start, start_code = rules.parse_start(_submitted(request, "start_time"))
+    span = _parse_span(_submitted(request, "span"))
     entered_purpose = _submitted(request, "purpose")
 
     # 칸 자체가 잘못된 이유를 먼저 모은다. 목적 검사보다 앞이다.
@@ -412,31 +577,51 @@ def reserve(request):
         slot_code = date_code
     if slot_code is None and start_code is not None:
         slot_code = start_code
+    starts = []
+    if slot_code is None and span is None:
+        slot_code = "bad_span"
     if slot_code is None:
-        # 날짜와 시각 형식은 맞다. 지난 날인지, 오늘 지난 시간인지만 본다.
-        slot_code = rules.calendar_block(day, start)
+        # 날짜와 시각 형식은 맞다. 연속 칸이 운영 시간 안인지, 지났는지를 본다.
+        starts = _span_starts(start, span)
+        if starts is None:
+            slot_code = "outside_hours"
+        else:
+            for item in starts:
+                blocked = rules.calendar_block(day, item)
+                if blocked is not None:
+                    slot_code = blocked
+                    break
 
     summary = None
     # 지난 칸도 어떤 칸이었는지는 보여 준다. 예약 폼은 slot_code가 없을 때만 연다.
     if room is not None and day is not None and start is not None:
         if slot_code is None or slot_code in ("past_date", "past_time"):
+            labels = []
+            for item in starts:
+                labels.append(rules.slot_label(item))
             summary = {
                 "room_id": room["id"],
                 "room_name": room["name"],
                 "date_iso": day.isoformat(),
                 "korean_date": rules.korean_date(day),
                 "slot_label": rules.slot_label(start),
+                "slot_labels": labels,
                 "start_hm": f"{start.hour:02d}:{start.minute:02d}",
+                "span": span,
             }
 
     taken = None
     if slot_code is None and summary is not None:
         # 저장하기 전에 같은 칸이 있는지 SQL로 확인한다.
-        taken = queries.fetch_reservation_for_slot(
-            summary["room_id"],
-            summary["date_iso"],
-            rules.time_text(start),
-        )
+        # 여러 칸이면 하나라도 차 있으면 그 칸을 보여 주고 저장하지 않는다.
+        for item in starts:
+            taken = queries.fetch_reservation_for_slot(
+                summary["room_id"],
+                summary["date_iso"],
+                rules.time_text(item),
+            )
+            if taken is not None:
+                break
 
     field_errors = []
     save_error = ""
@@ -444,21 +629,44 @@ def reserve(request):
         cleaned_purpose, field_errors = _clean_purpose(entered_purpose)
         if len(field_errors) == 0:
             # 이름과 전화번호는 폼이 아니라 입장할 때 기억한 값이다.
-            new_id = queries.insert_reservation(
-                summary["room_id"],
-                summary["date_iso"],
-                rules.time_text(start),
-                request.visitor["name"],
-                request.visitor["phone"],
-                cleaned_purpose,
-            )
-            if new_id is None:
-                # 확인과 저장 사이에 다른 저장이 들어왔거나, 제약이 거부했다.
-                taken = queries.fetch_reservation_for_slot(
+            if summary["span"] == 1:
+                new_id = queries.insert_reservation(
                     summary["room_id"],
                     summary["date_iso"],
                     rules.time_text(start),
+                    request.visitor["name"],
+                    request.visitor["phone"],
+                    cleaned_purpose,
                 )
+            else:
+                group = []
+                for item in starts:
+                    group.append(
+                        (
+                            summary["room_id"],
+                            summary["date_iso"],
+                            rules.time_text(item),
+                            request.visitor["name"],
+                            request.visitor["phone"],
+                            cleaned_purpose,
+                        )
+                    )
+                inserted_ids = queries.insert_reservations(group)
+                if inserted_ids is None:
+                    new_id = None
+                else:
+                    new_id = inserted_ids[0]
+            if new_id is None:
+                # 확인과 저장 사이에 다른 저장이 들어왔거나, 제약이 거부했다.
+                taken = None
+                for item in starts:
+                    taken = queries.fetch_reservation_for_slot(
+                        summary["room_id"],
+                        summary["date_iso"],
+                        rules.time_text(item),
+                    )
+                    if taken is not None:
+                        break
                 if taken is None:
                     save_error = MESSAGES["save_failed"]
             else:

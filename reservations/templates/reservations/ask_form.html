@@ -1,0 +1,9 @@
+<form class="ask-box" method="post" action="{% url 'ask' %}">
+  {% csrf_token %}
+  <label for="wish">말로 찾기</label>
+  <p class="hint">빈 칸을 찾거나, 내 예약을 확인 화면으로 엽니다. 여기서는 저장하거나 취소하지 않습니다.</p>
+  <div class="ask-row">
+    <input id="wish" name="wish" type="text" maxlength="200" placeholder="금요일 저녁에 두 시간, 조용히 공부" value="{{ wish }}">
+    <button type="submit">찾아보기</button>
+  </div>
+</form>

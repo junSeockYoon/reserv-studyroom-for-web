@@ -15,6 +15,15 @@
     </div>
   {% endif %}
 
+  {% if suggestion %}
+    <a class="suggest" href="{{ suggestion.url }}">
+      <span>{{ suggestion.sentence }}</span>
+      <span class="suggest-go">이 시간 예약</span>
+    </a>
+  {% endif %}
+
+  {% include "reservations/ask_form.html" %}
+
   {% if room_cards %}
     <div class="room-picker">
       {% for card in room_cards %}

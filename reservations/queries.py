@@ -274,6 +274,52 @@ def insert_reservation(room_id, date_text, time_text, booker_name, phone, purpos
     return int(new_id)
 
 
+def insert_reservations(items):
+    """연속된 칸 여러 개를 한 번에 넣는다.
+
+    items의 각 항목은 insert_reservation과 같은 순서다.
+    하나라도 이미 있으면 넣은 줄을 모두 되돌리고 None을 돌려준다.
+    """
+    created_text = connection.ops.adapt_datetimefield_value(timezone.now())
+    sql = """
+        INSERT INTO "reservation" (
+            "room_id",
+            "date",
+            "start_time",
+            "booker_name",
+            "phone",
+            "purpose",
+            "created_at"
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING "id"
+    """
+    try:
+        # 칸마다 따로 저장하면, 둘째 칸이 거절돼도 첫째 칸은 남을 수 있다.
+        # 하나의 거래로 묶어야 전부 저장되거나 전부 취소된다.
+        with transaction.atomic():
+            new_ids = []
+            with connection.cursor() as cursor:
+                for room_id, date_text, time_text, booker_name, phone, purpose in items:
+                    params = [
+                        room_id,
+                        date_text,
+                        time_text,
+                        booker_name,
+                        phone,
+                        purpose,
+                        created_text,
+                    ]
+                    cursor.execute(sql, params)
+                    inserted = cursor.fetchone()
+                    if not inserted:
+                        raise IntegrityError("예약 번호를 받지 못했습니다.")
+                    new_ids.append(int(inserted[0]))
+            return new_ids
+    except IntegrityError:
+        return None
+
+
 def delete_reservation(reservation_id):
     """예약 한 줄을 지운다.
 

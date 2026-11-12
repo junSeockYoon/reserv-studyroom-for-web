@@ -19,6 +19,8 @@ urlpatterns = [
     path("rooms/<int:room_id>/", views.room_schedule, name="room"),
     # http://127.0.0.1:8000/mine/  내 예약만 모은 목록
     path("mine/", views.mine, name="mine"),
+    # 말로 빈 칸을 찾거나, 내 예약 확인 화면으로 이동한다. 여기서 저장하거나 지우지 않는다.
+    path("ask/", views.ask, name="ask"),
     # http://127.0.0.1:8000/reserve/?room_id=1&date=2026-11-13&start_time=09:00
     path("reserve/", views.reserve, name="reserve"),
     # http://127.0.0.1:8000/reservations/1/
