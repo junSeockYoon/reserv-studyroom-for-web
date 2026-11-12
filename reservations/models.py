@@ -38,6 +38,8 @@ class Reservation(models.Model):
     # SQLite는 글자 수 제한을 스스로 지키지 않는다.
     # 그래서 views.py가 INSERT 하기 전에 이 숫자로 다시 검사한다.
     NAME_MAX = 30
+    # 전화번호는 숫자만 저장한다. 01012345678처럼 최대 11자리다.
+    PHONE_MAX = 20
     PURPOSE_MAX = 100
 
     id = models.BigAutoField(primary_key=True)
@@ -53,6 +55,8 @@ class Reservation(models.Model):
     # 시작 시각. 09:00, 10:00, ... 20:00 중 하나다.
     start_time = models.TimeField("시작 시간", null=False)
     booker_name = models.CharField("예약자 이름", max_length=NAME_MAX, null=False)
+    # 입장할 때 받은 전화번호. 하이픈을 뺀 숫자만 저장해서 같은 번호를 같은 사람으로 본다.
+    phone = models.CharField("전화번호", max_length=PHONE_MAX, null=False)
     purpose = models.CharField("사용 목적", max_length=PURPOSE_MAX, null=False)
     # 저장 시각. 화면의 예약 조건에는 쓰이지 않고 기록으로만 남긴다.
     created_at = models.DateTimeField("예약한 시각", null=False)

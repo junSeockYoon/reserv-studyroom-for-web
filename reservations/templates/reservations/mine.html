@@ -1,0 +1,36 @@
+{% extends "reservations/base.html" %}
+
+{% block title %}내 예약 · 스터디룸 예약{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <p class="kicker">예약 내역</p>
+    <h2>내 예약</h2>
+    <p class="rules">지금 입력한 이름과 전화번호로 저장한 예약만 나옵니다.</p>
+  </div>
+
+  {% if notice %}
+    <div class="panel panel-success" role="status">
+      <p>{{ notice }}</p>
+    </div>
+  {% endif %}
+
+  {% if reservations %}
+    <ul class="booking-list">
+      {% for item in reservations %}
+        <li>
+          <a href="{% url 'reservation_detail' item.id %}">
+            {{ item.korean_date }} · {{ item.room_name }} · {{ item.slot_label }}
+          </a>
+          <p class="purpose">{{ item.purpose }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="panel panel-empty">
+      <h3>아직 내가 예약한 내용이 없습니다</h3>
+      <p>방을 고른 뒤 연한 초록 칸을 누르면 예약 화면이 열립니다.</p>
+      <p><a class="button" href="{% url 'schedule' %}">방 고르기</a></p>
+    </div>
+  {% endif %}
+{% endblock %}

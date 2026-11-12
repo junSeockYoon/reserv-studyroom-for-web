@@ -7,3 +7,6 @@ __pycache__/
 
 # SQLite 데이터베이스. migrate 명령으로 다시 만들 수 있다.
 db.sqlite3
+
+# Supabase 비밀번호가 들어 있는 파일. GitHub에 올리면 안 된다.
+.env

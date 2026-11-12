@@ -3,3 +3,6 @@
 # 2026-11-12 기준으로 파이썬 3.14를 지원하는 최신 안정 Django는 6.1.3이다.
 # pip가 asgiref, sqlparse 같은 Django 부속 패키지도 함께 설치한다.
 Django==6.1.3
+# Supabase는 PostgreSQL이다. 이 패키지가 그 서버와 대화한다.
+# psycopg-binary는 설치 중에 같이 받아진다.
+psycopg[binary]==3.3.8

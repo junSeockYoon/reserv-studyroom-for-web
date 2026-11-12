@@ -6,28 +6,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}스터디룸 예약{% endblock %}</title>
   <style>
-    /* 색 이름. 화면 전체에서 같은 색을 쓰기 위해 변수로 모아 둔다. */
+    /* 화면 전체에서 같이 쓰는 색. 인디고 한 가지를 포인트로 두고 나머지는 옅게 둔다. */
     :root {
       color-scheme: light;
-      --ink: #1c1915;
-      --muted: #5c564c;
-      --paper: #f3efe6;
-      --card: #fffdf8;
-      --line: #ddd4c4;
-      --green: #1f7a4d;
-      --green-dark: #143024;
-      --blue: #1d4e89;
-      --closed: #e4ddd0;
-      --closed-ink: #3f3a34;
-      --danger: #9d2c2c;
-      --error-bg: #fdecea;
-      --error-line: #b42318;
-      --warn-bg: #fff6e8;
-      --warn-line: #b54708;
-      --ok-bg: #e5f6ec;
-      --ok-line: #1f7a4d;
-      --info-bg: #e8f0f6;
-      --info-line: #3d5a73;
+      --ink: #16181d;
+      --muted: #667085;
+      --paper: #f5f7fb;
+      --card: #ffffff;
+      --line: #e7e9f0;
+      --accent: #4f46e5;
+      --accent-dark: #3730a3;
+      --open: #ecfdf3;
+      --open-ink: #067647;
+      --open-line: #abefc6;
+      --mine: #4f46e5;
+      --taken-bg: #eef2ff;
+      --taken-ink: #3730a3;
+      --closed: #f2f4f7;
+      --closed-ink: #98a2b3;
+      --danger: #d92d20;
+      --error-bg: #fef3f2;
+      --error-line: #fecdca;
+      --warn-bg: #fffaeb;
+      --warn-line: #fedf89;
+      --ok-bg: #ecfdf3;
+      --ok-line: #abefc6;
+      --info-bg: #f4f3ff;
+      --info-line: #d9d6fe;
+      --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.06);
     }
 
     * { box-sizing: border-box; }
@@ -35,79 +41,128 @@
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--paper);
-      font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background:
+        radial-gradient(900px 420px at 100% -10%, #e0e7ff 0%, transparent 55%),
+        var(--paper);
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
       font-size: 16px;
-      line-height: 1.5;
+      line-height: 1.55;
+      letter-spacing: -0.01em;
     }
 
-    a { color: var(--green-dark); }
-    a:hover { text-decoration: none; }
+    a { color: var(--accent-dark); }
+    a:hover { color: var(--accent); }
 
     .top {
-      background: var(--green-dark);
-      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(255, 255, 255, 0.86);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
     }
 
-    .top a,
-    .top a:visited {
-      color: #fff;
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 12px;
+      min-height: 68px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 1.05rem;
       text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .brand:visited { color: var(--ink); }
+
+    .mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
     }
 
     .wrap {
-      width: min(1100px, 100%);
+      width: min(1080px, 100%);
       margin: 0 auto;
-      padding: 16px;
+      padding: 16px 20px;
     }
 
-    .eyebrow {
-      margin: 0;
-      font-size: 0.85rem;
-      letter-spacing: 0.04em;
+    h1 { margin: 0; font-size: 1.15rem; }
+    h2 { margin: 0 0 8px; font-size: 1.7rem; letter-spacing: -0.03em; }
+    h3 { margin: 0 0 12px; font-size: 1.05rem; }
+
+    main.wrap { padding-top: 28px; padding-bottom: 64px; }
+
+    .page-head { margin-bottom: 18px; }
+
+    .kicker {
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 700;
     }
-
-    h1 { margin: 0.2rem 0; font-size: 1.6rem; }
-    h2 { margin: 0 0 0.6rem; font-size: 1.3rem; }
-    h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
-
-    .lede { margin: 0.3rem 0 0; }
-
-    main.wrap { padding-bottom: 48px; }
 
     .rules {
-      margin: 0 0 16px;
+      margin: 0;
+      max-width: 40rem;
       color: var(--muted);
     }
 
-    .date-row {
+    .date-row,
+    .toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
       align-items: end;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
+      padding: 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
     }
 
     label {
       display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
       font-weight: 700;
-      margin-bottom: 4px;
     }
 
     .date-field { flex: 1 1 16rem; }
 
     input[type="date"],
     input[type="text"],
+    input[type="tel"],
     textarea {
       width: 100%;
       max-width: 100%;
       min-height: 48px;
-      padding: 10px 12px;
-      border: 2px solid var(--line);
-      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
       background: #fff;
       color: var(--ink);
       font: inherit;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     textarea {
@@ -120,45 +175,65 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 48px;
-      padding: 10px 16px;
-      border: 2px solid var(--green);
-      border-radius: 10px;
-      background: var(--green);
+      min-height: 46px;
+      padding: 10px 18px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--accent);
       color: #fff;
       font: inherit;
+      font-weight: 700;
       text-decoration: none;
       cursor: pointer;
+      box-shadow: 0 1px 2px rgba(79, 70, 229, 0.25);
     }
 
     a.button:visited { color: #fff; }
+    button:hover,
+    a.button:hover { background: var(--accent-dark); }
 
     button.secondary,
     a.button.secondary {
       background: #fff;
-      color: var(--green-dark);
-      border-color: var(--green-dark);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    button.secondary:hover,
+    a.button.secondary:hover {
+      background: #f8f9fc;
+      color: var(--ink);
     }
 
     button.danger {
       background: var(--danger);
-      border-color: var(--danger);
       color: #fff;
+      box-shadow: none;
     }
+
+    button.danger:hover { background: #b42318; }
 
     button:focus,
     a:focus,
     input:focus,
     textarea:focus {
-      outline: 3px solid var(--green);
+      outline: 3px solid #c7d2fe;
       outline-offset: 2px;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #a5b4fc;
+      outline: none;
+      box-shadow: 0 0 0 4px #e0e7ff;
     }
 
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 16px;
-      margin: 0 0 16px;
+      gap: 8px;
+      margin: 0 0 18px;
       padding: 0;
       list-style: none;
     }
@@ -167,152 +242,373 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--muted);
+      font-size: 0.86rem;
     }
 
     .swatch {
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
       flex: 0 0 auto;
     }
 
-    .swatch-open { background: #fff; border: 2px solid var(--green); }
-    .swatch-taken { background: var(--blue); }
-    .swatch-closed { background: var(--closed); border: 2px solid #c9c0b0; }
+    .swatch-open { background: var(--open-ink); }
+    .swatch-taken { background: var(--mine); }
+    .swatch-closed { background: var(--closed-ink); }
 
     .room {
       background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px;
-      margin-bottom: 16px;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
     }
 
-    /* 칸 너비를 9.5rem 이상으로 잡아, 휴대폰에서도 시간이 두 줄로 쪼개지지 않게 한다. */
+    .room h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .room h3::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    /* 칸이 너무 좁아지면 시간이 두 줄로 나뉘므로 최소 너비를 둔다. */
     .slot-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
 
     .slot {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 2px;
-      min-height: 76px;
-      padding: 10px;
-      border-radius: 12px;
+      gap: 4px;
+      min-height: 74px;
+      padding: 12px;
+      border-radius: 14px;
       text-decoration: none;
       overflow-wrap: anywhere;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .slot-time { font-weight: 700; }
-    .slot-state { font-size: 0.95rem; }
+    a.slot:hover { transform: translateY(-1px); }
+
+    .slot-time {
+      font-size: 0.92rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .slot-state { font-size: 0.78rem; font-weight: 700; }
 
     .slot-open,
     .slot-open:visited {
-      background: #fff;
-      color: var(--green-dark);
-      border: 2px solid var(--green);
+      background: var(--open);
+      color: var(--open-ink);
+      border: 1px solid var(--open-line);
     }
 
-    .slot-open:hover { background: #e7f6ee; }
+    .slot-mine,
+    .slot-mine:visited {
+      background: var(--mine);
+      color: #fff;
+      border: 1px solid var(--mine);
+      box-shadow: 0 8px 16px rgba(79, 70, 229, 0.22);
+    }
 
     .slot-taken,
     .slot-taken:visited {
-      background: var(--blue);
-      color: #fff;
-      border: 2px solid var(--blue);
+      background: var(--taken-bg);
+      color: var(--taken-ink);
+      border: 1px solid #e0e7ff;
     }
-
-    .slot-taken:hover { background: #173e61; }
 
     .slot-closed {
       background: var(--closed);
       color: var(--closed-ink);
-      border: 2px solid #d3c9b8;
+      border: 1px solid transparent;
     }
 
     .panel {
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 14px 16px;
-      margin: 0 0 16px;
+      margin: 0 0 14px;
     }
 
-    .panel-error { background: var(--error-bg); border: 2px solid var(--error-line); }
-    .panel-taken { background: var(--warn-bg); border: 2px solid var(--warn-line); }
-    .panel-empty { background: #fff; border: 2px dashed #8a8175; }
-    .panel-confirm { background: #fff; border: 2px solid var(--danger); }
-    .panel-info { background: var(--info-bg); border: 2px solid var(--info-line); }
-    .panel-success { background: var(--ok-bg); border: 2px solid var(--ok-line); }
-
+    .panel p:last-child { margin-bottom: 0; }
+    .panel-error { background: var(--error-bg); border: 1px solid var(--error-line); }
+    .panel-taken { background: var(--warn-bg); border: 1px solid var(--warn-line); }
+    .panel-empty { background: var(--card); border: 1px dashed #d0d5dd; }
+    .panel-confirm { background: #fff; border: 1px solid #fecdca; }
+    .panel-info { background: var(--info-bg); border: 1px solid var(--info-line); }
+    .panel-success { background: var(--ok-bg); border: 1px solid var(--ok-line); }
     .panel h2,
     .panel h3 { margin-top: 0; }
+
+    .list-block { margin-top: 22px; }
 
     .booking-list {
       list-style: none;
       margin: 0;
       padding: 0;
+      display: grid;
+      gap: 8px;
     }
 
     .booking-list li {
       background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 8px;
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
     }
 
-    .purpose { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.4rem 0 0; }
+    .booking-list a {
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .purpose {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .sheet {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
 
     .facts {
       display: grid;
       grid-template-columns: 7.5rem 1fr;
-      gap: 8px 12px;
-      margin: 0 0 16px;
+      gap: 10px 12px;
+      margin: 0;
     }
 
-    .facts dt { color: var(--muted); font-weight: 700; }
-    .facts dd { margin: 0; overflow-wrap: anywhere; }
+    .facts dt { color: var(--muted); font-size: 0.86rem; font-weight: 700; }
+    .facts dd { margin: 0; overflow-wrap: anywhere; font-weight: 650; }
 
-    .hint { color: var(--muted); margin-top: 0; }
+    .hint { color: var(--muted); margin: 8px 0 0; font-size: 0.9rem; }
 
     .actions {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 16px;
     }
-
-    .actions > * { flex: 1 1 12rem; }
 
     .card {
       background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
+      border-radius: 20px;
+      padding: 18px;
       margin-bottom: 16px;
+      box-shadow: var(--shadow);
     }
 
-    .card label { margin-top: 12px; }
-    .card label:first-child { margin-top: 0; }
+    .card label { margin-top: 14px; }
+    .card label:first-of-type { margin-top: 0; }
+
+    .gate {
+      width: min(440px, 100%);
+      margin: 12px auto 0;
+    }
+
+    .visitor-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .who {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 4px 12px 4px 4px;
+      border-radius: 999px;
+      background: #f4f3ff;
+      color: var(--accent-dark);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.78rem;
+    }
+
+    .visitor-bar form { margin: 0; }
+
+    .visitor-bar button {
+      min-height: 36px;
+      padding: 6px 12px;
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+      font-size: 0.86rem;
+    }
+
+    .site-nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    .site-nav a {
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .site-nav a:hover {
+      background: #f4f3ff;
+      color: var(--accent-dark);
+    }
+
+    .room-picker { display: grid; gap: 14px; }
+
+    .room-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .room-card-link {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .room-card-link h2 { margin-bottom: 4px; }
+    .room-card-link:hover h2 { color: var(--accent); }
+
+    .day-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-top: 14px;
+      padding-bottom: 4px;
+    }
+
+    .day-strip-page { margin-bottom: 16px; }
+
+    .day-chip {
+      flex: 0 0 76px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 10px 6px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .day-week { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+    .day-num { font-size: 1.15rem; font-weight: 700; }
+    .day-meta { font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+
+    .day-open {
+      background: var(--open);
+      border-color: var(--open-line);
+      color: var(--open-ink);
+    }
+
+    .day-open .day-week,
+    .day-open .day-meta { color: var(--open-ink); }
+
+    .day-full {
+      background: var(--taken-bg);
+      border-color: #e0e7ff;
+      color: var(--taken-ink);
+    }
+
+    .day-past {
+      background: var(--closed);
+      color: var(--closed-ink);
+    }
+
+    .day-chip.is-selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 650;
+      text-decoration: none;
+    }
 
     @media (max-width: 480px) {
-      h1 { font-size: 1.35rem; }
-      /* 좁은 화면에서도 시간 칸을 두 줄로 쌓지 않고, 한 줄에 두 칸씩 둔다. */
+      h2 { font-size: 1.4rem; }
+      .bar { align-items: flex-start; padding-top: 10px; padding-bottom: 10px; }
+      .visitor-bar { width: 100%; }
+      .who { max-width: 100%; }
+      /* 좁은 화면에서도 시간 칸을 한 줄에 두 칸씩 둔다. */
       .slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .facts { grid-template-columns: 1fr; gap: 2px; }
       .facts dt { margin-top: 8px; }
+      .actions > * { flex: 1 1 100%; }
     }
   </style>
 </head>
 <body>
   <header class="top">
-    <div class="wrap">
-      <p class="eyebrow">내 컴퓨터에서 사용하는 시간표</p>
-      <h1><a href="{% url 'schedule' %}">스터디룸 예약</a></h1>
-      <p class="lede">로그인 없이 씁니다. 한 칸은 1시간이고, 같은 칸은 한 명만 예약할 수 있습니다.</p>
+    <div class="wrap bar">
+      <a class="brand" href="{% url 'schedule' %}">
+        <span class="mark">룸</span>
+        <span>스터디룸</span>
+      </a>
+      {% if visitor %}
+        <nav class="site-nav">
+          <a href="{% url 'schedule' %}">방</a>
+          <a href="{% url 'mine' %}">예약 내역</a>
+        </nav>
+      {% endif %}
+      {% if visitor %}
+        <div class="visitor-bar">
+          <span class="who"><span class="avatar">{{ visitor.name|first }}</span>{{ visitor.name }} · {{ visitor.phone_label }}</span>
+          <form method="post" action="{% url 'leave' %}">
+            {% csrf_token %}
+            <button class="secondary" type="submit">나가기</button>
+          </form>
+        </div>
+      {% endif %}
     </div>
   </header>
   <main class="wrap">

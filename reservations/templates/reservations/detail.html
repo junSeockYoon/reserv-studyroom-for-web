@@ -3,7 +3,11 @@
 {% block title %}예약 확인 · 스터디룸 예약{% endblock %}
 
 {% block content %}
-  <h2>예약 내용</h2>
+  <div class="page-head">
+    <p class="kicker">내 예약</p>
+    <h2>예약 내용</h2>
+  </div>
+  <div class="sheet">
   <dl class="facts">
     <dt>스터디룸</dt>
     <dd>{{ reservation.room_name }}</dd>
@@ -13,9 +17,12 @@
     <dd>{{ reservation.slot_label }}</dd>
     <dt>예약자 이름</dt>
     <dd>{{ reservation.booker_name }}</dd>
+    <dt>전화번호</dt>
+    <dd>{{ reservation.phone_label }}</dd>
     <dt>사용 목적</dt>
     <dd class="purpose">{{ reservation.purpose }}</dd>
   </dl>
+  </div>
 
   {% if error %}
     <div class="panel panel-error" role="alert">
@@ -33,7 +40,7 @@
       <input type="hidden" name="confirm" value="yes">
       <div class="actions">
         <button class="danger" type="submit">예약 취소</button>
-        <a class="button secondary" href="{% url 'schedule' %}?date={{ reservation.date_iso }}">시간표로 돌아가기</a>
+        <a class="button secondary" href="{% url 'room' reservation.room_id %}?date={{ reservation.date_iso }}">시간표로 돌아가기</a>
       </div>
     </form>
   </section>

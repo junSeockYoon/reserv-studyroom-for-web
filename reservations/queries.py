@@ -4,8 +4,8 @@
 이 파일의 SQL 문장으로 처리한다.
 사용자가 입력한 값은 문장에 이어 붙이지 않고 %s 자리 표시자로 넘긴다.
 
-Django의 SQLite 연결은 %s를 받아서 실행 전에 ?로 바꾼다.
-SQLite 예제에 나오는 ?를 이 파일에 직접 쓰지 않는다.
+코드에서는 항상 %s를 쓴다.
+SQLite에 연결하면 Django가 %s를 ?로 바꾸고, Supabase(PostgreSQL)는 %s를 그대로 쓴다.
 """
 
 import datetime
@@ -120,6 +120,7 @@ def fetch_reservations_for_date(date_text):
             "reservation"."date" AS date,
             "reservation"."start_time" AS start_time,
             "reservation"."booker_name" AS booker_name,
+            "reservation"."phone" AS phone,
             "reservation"."purpose" AS purpose,
             "reservation"."created_at" AS created_at
         FROM "reservation"
@@ -128,6 +129,57 @@ def fetch_reservations_for_date(date_text):
         ORDER BY "study_room"."id", "reservation"."start_time"
     """
     return _fetch_all(sql, [date_text])
+
+
+def fetch_reservations_between(start_text, end_text):
+    """시작 날짜부터 끝 날짜까지 예약을 가져온다. 양 끝 날짜를 포함한다."""
+    sql = """
+        SELECT
+            "reservation"."id" AS id,
+            "reservation"."room_id" AS room_id,
+            "study_room"."name" AS room_name,
+            "reservation"."date" AS date,
+            "reservation"."start_time" AS start_time,
+            "reservation"."booker_name" AS booker_name,
+            "reservation"."phone" AS phone,
+            "reservation"."purpose" AS purpose,
+            "reservation"."created_at" AS created_at
+        FROM "reservation"
+        JOIN "study_room" ON "study_room"."id" = "reservation"."room_id"
+        WHERE "reservation"."date" >= %s
+          AND "reservation"."date" <= %s
+        ORDER BY "reservation"."date", "study_room"."id", "reservation"."start_time"
+    """
+    return _fetch_all(sql, [start_text, end_text])
+
+
+def fetch_my_reservations(booker_name, phone):
+    """이 이름과 전화번호로 저장된 예약을 날짜 순으로 가져온다.
+
+    전화번호가 비어 있는 예전 줄은 이름이 같으면 함께 읽는다.
+    다른 사람 줄이 섞였는지는 views.py가 다시 가린다.
+    """
+    sql = """
+        SELECT
+            "reservation"."id" AS id,
+            "reservation"."room_id" AS room_id,
+            "study_room"."name" AS room_name,
+            "reservation"."date" AS date,
+            "reservation"."start_time" AS start_time,
+            "reservation"."booker_name" AS booker_name,
+            "reservation"."phone" AS phone,
+            "reservation"."purpose" AS purpose,
+            "reservation"."created_at" AS created_at
+        FROM "reservation"
+        JOIN "study_room" ON "study_room"."id" = "reservation"."room_id"
+        WHERE "reservation"."booker_name" = %s
+          AND (
+                "reservation"."phone" = %s
+                OR "reservation"."phone" = ''
+              )
+        ORDER BY "reservation"."date", "reservation"."start_time", "study_room"."id"
+    """
+    return _fetch_all(sql, [booker_name, phone])
 
 
 def fetch_reservation_for_slot(room_id, date_text, time_text):
@@ -144,6 +196,7 @@ def fetch_reservation_for_slot(room_id, date_text, time_text):
             "reservation"."date" AS date,
             "reservation"."start_time" AS start_time,
             "reservation"."booker_name" AS booker_name,
+            "reservation"."phone" AS phone,
             "reservation"."purpose" AS purpose,
             "reservation"."created_at" AS created_at
         FROM "reservation"
@@ -167,6 +220,7 @@ def fetch_reservation(reservation_id):
             "reservation"."date" AS date,
             "reservation"."start_time" AS start_time,
             "reservation"."booker_name" AS booker_name,
+            "reservation"."phone" AS phone,
             "reservation"."purpose" AS purpose,
             "reservation"."created_at" AS created_at
         FROM "reservation"
@@ -176,14 +230,16 @@ def fetch_reservation(reservation_id):
     return _fetch_one(sql, [reservation_id])
 
 
-def insert_reservation(room_id, date_text, time_text, booker_name, purpose):
+def insert_reservation(room_id, date_text, time_text, booker_name, phone, purpose):
     """예약 한 줄을 넣는다.
 
+    phone은 하이픈을 뺀 숫자만 넘긴다. views.py가 검사한 뒤에 호출한다.
     성공하면 새 예약 번호를 돌려준다.
     같은 칸이 이미 있어서 데이터베이스가 거부하면 None을 돌려준다.
     이 함수는 확인 없이 바로 INSERT 한다. 거절은 표의 고유 제약이 한다.
     """
-    # DateTimeField와 같게, 지금 시각을 UTC 벽시계 글자로 바꾼다.
+    # 지금 시각을 현재 데이터베이스가 받는 형식으로 바꾼다.
+    # SQLite는 글자, Supabase는 시간 값으로 넘어간다.
     created_text = connection.ops.adapt_datetimefield_value(timezone.now())
     sql = """
         INSERT INTO "reservation" (
@@ -191,12 +247,14 @@ def insert_reservation(room_id, date_text, time_text, booker_name, purpose):
             "date",
             "start_time",
             "booker_name",
+            "phone",
             "purpose",
             "created_at"
         )
-        VALUES (%s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING "id"
     """
-    params = [room_id, date_text, time_text, booker_name, purpose, created_text]
+    params = [room_id, date_text, time_text, booker_name, phone, purpose, created_text]
     try:
         # atomic 안에서 오류가 나면 그 INSERT만 취소된다.
         # except를 atomic 안에 두면 Django가 거래를 깨진 상태로 본다.
@@ -204,8 +262,10 @@ def insert_reservation(room_id, date_text, time_text, booker_name, purpose):
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(sql, params)
-                # SQLite가 방금 만든 줄의 번호를 알려 준다.
-                new_id = cursor.lastrowid
+                # RETURNING이 돌려준 첫 칸이 새 예약 번호다.
+                # SQLite의 lastrowid는 Supabase에서 비어 있으므로 이 값을 쓴다.
+                inserted = cursor.fetchone()
+                new_id = inserted[0] if inserted else None
     except IntegrityError:
         # 고유 제약이 두 번째 예약을 거부하면 여기로 온다.
         return None

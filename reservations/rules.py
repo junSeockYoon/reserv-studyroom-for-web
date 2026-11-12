@@ -36,6 +36,12 @@ def is_allowed_start(start):
     return start in allowed_starts()
 
 
+def weekday_char(day):
+    """날짜의 요일을 월, 화, 수처럼 한 글자로 돌려준다."""
+    names = "월화수목금토일"
+    return names[day.weekday()]
+
+
 def slot_label(start):
     """09:00~10:00처럼 한 칸의 시작과 끝을 글자로 만든다."""
     end_hour = start.hour + 1
@@ -160,3 +166,36 @@ def stored_datetime_as_seoul(value):
         f"{local.year}년 {local.month}월 {local.day}일 "
         f"{local.hour:02d}:{local.minute:02d}"
     )
+
+
+def normalize_phone(text):
+    """전화번호를 숫자만 남긴 값으로 맞춘다.
+
+    010-1234-5678과 01012345678은 같은 사람으로 본다.
+    0으로 시작하고 숫자가 10자리 또는 11자리일 때만 받는다.
+    돌려주는 값은 (숫자만 있는 전화번호, 오류 코드)이다.
+    오류가 없으면 오류 코드는 None이다.
+    """
+    if text is None:
+        return None, "empty_phone"
+    digits = ""
+    for ch in str(text):
+        if ch.isdigit():
+            digits = digits + ch
+    if digits == "":
+        return None, "empty_phone"
+    if not digits.startswith("0") or len(digits) not in (10, 11):
+        return None, "bad_phone"
+    return digits, None
+
+
+def format_phone(digits):
+    """저장된 숫자를 화면에 보여 줄 때 하이픈을 넣는다."""
+    text = str(digits)
+    if len(text) == 11:
+        return text[:3] + "-" + text[3:7] + "-" + text[7:]
+    if len(text) == 10 and text.startswith("02"):
+        return text[:2] + "-" + text[2:6] + "-" + text[6:]
+    if len(text) == 10:
+        return text[:3] + "-" + text[3:6] + "-" + text[6:]
+    return text

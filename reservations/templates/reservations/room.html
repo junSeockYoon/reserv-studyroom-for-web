@@ -1,0 +1,113 @@
+{% extends "reservations/base.html" %}
+
+{% block title %}{{ room.name }} · {{ korean_date }} · 스터디룸 예약{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <p class="kicker"><a href="{% url 'schedule' %}">방 고르기</a></p>
+    <h2>{{ room.name }}</h2>
+    <p class="rules">
+      {{ korean_date }} 시간입니다. 운영 시간은 09:00~21:00이고, 예약은 1시간입니다.
+      지난 날짜와 이미 시작한 시간은 예약할 수 없습니다.
+    </p>
+  </div>
+
+  <div class="day-strip day-strip-page" aria-label="{{ room.name }} 날짜">
+    {% for day in days %}
+      <a class="day-chip day-{{ day.state }}{% if day.selected %} is-selected{% endif %}"
+         href="{% url 'room' room.id %}?date={{ day.iso }}">
+        <span class="day-week">{{ day.weekday }}</span>
+        <span class="day-num">{{ day.day_num }}</span>
+        {% if day.state == "past" %}
+          <span class="day-meta">지남</span>
+        {% elif day.state == "full" %}
+          <span class="day-meta">마감</span>
+        {% else %}
+          <span class="day-meta">남음 {{ day.open_count }}</span>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+
+  <form class="date-row" method="get" action="{% url 'room' room.id %}">
+    <div class="date-field">
+      <label for="date">다른 날짜</label>
+      <input id="date" name="date" type="date" value="{{ date_iso }}" required>
+    </div>
+    <button type="submit">이 날짜 보기</button>
+    <a class="button secondary" href="{% url 'room' room.id %}">오늘</a>
+  </form>
+
+  {% if notice %}
+    <div class="panel panel-success" role="status">
+      <p>{{ notice }}</p>
+    </div>
+  {% endif %}
+
+  {% if date_error %}
+    <div class="panel panel-error" role="alert">
+      <h3>날짜를 다시 선택해 주세요</h3>
+      <p>{{ date_error }}</p>
+    </div>
+  {% endif %}
+
+  {% if is_past_day %}
+    <div class="panel panel-info">
+      <h3>지난 날짜는 예약할 수 없습니다</h3>
+      <p>시간표는 볼 수 있습니다. 내가 예약한 칸만 눌러 내용을 확인하거나, 확인 후에 취소할 수 있습니다. 빈 칸으로 새 예약은 만들지 못합니다.</p>
+    </div>
+  {% endif %}
+
+  {% if show_past_time_note %}
+    <div class="panel panel-info">
+      <p>오늘 이미 시작한 시간은 회색입니다. 그 칸은 예약할 수 없습니다.</p>
+    </div>
+  {% endif %}
+
+  <ul class="legend">
+    <li><span class="swatch swatch-open"></span> 누를 수 있는 칸</li>
+    <li><span class="swatch swatch-taken"></span> 이미 잡힌 칸</li>
+    <li><span class="swatch swatch-closed"></span> 지나간 칸</li>
+  </ul>
+
+  <section class="room">
+    <h3>{{ room.name }}</h3>
+    <div class="slot-grid">
+      {% for slot in slots %}
+        {% if slot.reservation %}
+          {% if slot.reservation.is_mine %}
+            <a class="slot slot-mine"
+               href="{% url 'reservation_detail' slot.reservation.id %}"
+               aria-label="{{ room.name }}, {{ slot.label }}, 나의 예약 칸">
+              <span class="slot-time">{{ slot.label }}</span>
+              <span class="slot-state">내 예약</span>
+            </a>
+          {% else %}
+            <div class="slot slot-taken"
+                 aria-label="{{ room.name }}, {{ slot.label }}, 다른 사람의 예약">
+              <span class="slot-time">{{ slot.label }}</span>
+              <span class="slot-state">예약됨</span>
+            </div>
+          {% endif %}
+        {% elif slot.closed %}
+          <div class="slot slot-closed"
+               aria-label="{{ room.name }}, {{ slot.label }}, 예약 불가">
+            <span class="slot-time">{{ slot.label }}</span>
+            {% if slot.closed == "past_date" %}
+              <span class="slot-state">지난 날짜</span>
+            {% else %}
+              <span class="slot-state">지난 시간</span>
+            {% endif %}
+          </div>
+        {% else %}
+          <a class="slot slot-open"
+             href="{% url 'reserve' %}?room_id={{ room.id }}&amp;date={{ date_iso }}&amp;start_time={{ slot.start_hm }}"
+             aria-label="{{ room.name }}, {{ slot.label }}, 예약 가능">
+            <span class="slot-time">{{ slot.label }}</span>
+            <span class="slot-state">비어 있음</span>
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}
