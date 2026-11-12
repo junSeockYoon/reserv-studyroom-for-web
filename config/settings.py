@@ -78,16 +78,34 @@ def database_from_url(url):
 # .env가 있으면 그 안의 DATABASE_URL을 지금 읽어 둔다.
 load_env_file(BASE_DIR / ".env")
 
+# Vercel이 배포 서버를 켤 때 이 값을 1로 넣는다. 내 컴퓨터의 .env에는 없다.
+ON_VERCEL = os.environ.get("VERCEL") == "1"
+
 # 폼이 다른 사이트에서 몰래 전송되지 않도록 Django가 서명할 때 쓰는 열쇠다.
-# 이 프로젝트는 인터넷에 올리지 않고 내 컴퓨터에서만 실행한다.
-SECRET_KEY = "txD74PhSo9OhGnVCquIdj0OLtZ8RKRPGOX8XO8J5N2ZBefWdchmfaWPi-dTZK1UJOQY"
+# 배포할 때는 Vercel 환경 변수의 SECRET_KEY를 쓰고, 없으면 연습용 열쇠를 쓴다.
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "txD74PhSo9OhGnVCquIdj0OLtZ8RKRPGOX8XO8J5N2ZBefWdchmfaWPi-dTZK1UJOQY",
+)
 
-# 오류가 나면 노란 설명 화면을 보여 준다. 연습용으로만 켠다.
-DEBUG = True
+# 내 컴퓨터에서는 오류가 나면 노란 설명 화면을 보여 준다.
+# Vercel에서는 그 화면이 코드 내부를 드러내므로 끈다.
+DEBUG = not ON_VERCEL
 
-# 이 서버가 응답해도 되는 주소. 내 컴퓨터의 주소만 적는다.
-# testserver는 브라우저 주소가 아니라, python manage.py test 가 쓰는 이름이다.
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
+# 이 서버가 응답해도 되는 주소.
+# testserver는 python manage.py test 가 쓰는 이름이다.
+# .vercel.app 앞의 점은 배포마다 달라지는 앞부분(프로젝트이름.vercel.app)을 허용한다.
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver", ".vercel.app"]
+
+# 배포 주소에서 온 예약·취소 폼을 받는다. 내 컴퓨터 주소는 Django가 따로 허용한다.
+CSRF_TRUSTED_ORIGINS = ["https://*.vercel.app"]
+
+if ON_VERCEL:
+    # Vercel은 https 요청을 받아서 앱에는 http로 넘긴다.
+    # 이 헤더를 봐야 세션 쿠키와 폼 검사가 배포 주소에서 동작한다.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # 예약 앱과, 브라우저에 이름·전화번호를 기억할 세션만 켠다.
 # django.contrib.admin 은 관리자 화면이라 넣지 않는다.

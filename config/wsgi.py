@@ -1,7 +1,6 @@
-"""로컬 서버가 설정을 불러올 때 사용하는 입구.
+"""서버가 설정을 불러올 때 사용하는 입구.
 
-python manage.py runserver 가 이 파일을 읽는다.
-인터넷에 배포하는 설정은 만들지 않는다.
+python manage.py runserver 와 Vercel이 이 파일의 application 을 읽는다.
 """
 
 import os
